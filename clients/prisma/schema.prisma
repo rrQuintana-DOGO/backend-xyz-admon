@@ -1,0 +1,130 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL_POSTGRES")
+}
+
+model client_configs {
+  id_client_config    String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id_client           String?  @db.Uuid
+  id_platform_account Int?
+  platform_token      String?  @db.VarChar(255)
+  base_url            String?  @db.VarChar(255)
+  clients             clients? @relation(fields: [id_client], references: [id_client], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model client_databases {
+  id_client_database String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id_client          String?  @db.Uuid
+  id_module          String?  @db.Uuid
+  database_token     String?  @db.VarChar(255)
+  status             Boolean?
+  clients            clients? @relation(fields: [id_client], references: [id_client], onDelete: NoAction, onUpdate: NoAction)
+  modules            modules? @relation(fields: [id_module], references: [id_module], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model clients {
+  id_client                   String                        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id_ext                      String                        @db.VarChar(255)
+  id_sap                      String?                       @db.VarChar(255)
+  name                        String?                       @db.VarChar(255)
+  email                       String                        @db.VarChar(255)
+  company_name                String?                       @db.VarChar(255)
+  address                     String?                       @db.VarChar(255)
+  rfc                         String?                       @db.VarChar(255)
+  slug                        String?                       @db.VarChar(255)  @unique
+  status                      Boolean?
+  client_configs              client_configs[]
+  client_databases            client_databases[]
+  credentials_xyz_has_clients credentials_xyz_has_clients[]
+  invoices                    invoices[]
+  paid_methods                paid_methods[]
+  subscriptions               subscriptions[]
+}
+
+model credentials_xyz {
+  id_credential_xyz           String                        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  username                    String?                       @db.VarChar(255)
+  password                    String?                       @db.VarChar(255)
+  status                      Boolean?
+  credentials_xyz_has_clients credentials_xyz_has_clients[]
+}
+
+model credentials_xyz_has_clients {
+  id_credential_xyz_has_client String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id_credential_xyz            String?          @db.Uuid
+  id_client                    String?          @db.Uuid
+  clients                      clients?         @relation(fields: [id_client], references: [id_client], onDelete: NoAction, onUpdate: NoAction)
+  credentials_xyz              credentials_xyz? @relation(fields: [id_credential_xyz], references: [id_credential_xyz], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model invoices {
+  id_invoice      String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id_client       String?        @db.Uuid
+  id_subscription String?        @db.Uuid
+  created_at      BigInt?
+  url_doc         String?        @db.VarChar(255)
+  clients         clients?       @relation(fields: [id_client], references: [id_client], onDelete: NoAction, onUpdate: NoAction)
+  subscriptions   subscriptions? @relation(fields: [id_subscription], references: [id_subscription], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model modules {
+  id_module                String                     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name                     String?                    @db.VarChar(255)
+  cost                     Float?                     @db.Real
+  slug                     String?                    @db.VarChar(255) @unique
+  status                   Boolean?
+  client_databases         client_databases[]
+  subscription_has_modules subscription_has_modules[]
+}
+
+model paid_methods {
+  id_paid_method              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id_stripe_payment_methodful String?  @db.VarChar(255)
+  name                        String?  @db.VarChar(255)
+  id_client                   String?  @db.Uuid
+  status                      Boolean?
+  clients                     clients? @relation(fields: [id_client], references: [id_client], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model subscription_has_modules {
+  id_subscription_has_module String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id_module                  String?        @db.Uuid
+  id_subscription            String?        @db.Uuid
+  modules                    modules?       @relation(fields: [id_module], references: [id_module], onDelete: NoAction, onUpdate: NoAction)
+  subscriptions              subscriptions? @relation(fields: [id_subscription], references: [id_subscription], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model subscription_tiers {
+  id_subscription_tier String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name                 String?         @db.VarChar(255)
+  price                Float?          @db.Real
+  status               Boolean?
+  subscriptions        subscriptions[]
+}
+
+model subscription_types {
+  id_subscription_type String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name                 String?         @db.VarChar(255)
+  status               Boolean?
+  subscriptions        subscriptions[]
+}
+
+model subscriptions {
+  id_subscription          String                     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id_client                String                     @db.Uuid
+  id_subscription_stripe   String                     @db.VarChar(255)
+  id_subscription_type     String?                    @db.Uuid
+  id_subscription_tier     String?                    @db.Uuid
+  start_date               BigInt?
+  expire_date              BigInt?
+  status                   Boolean?
+  invoices                 invoices[]
+  subscription_has_modules subscription_has_modules[]
+  clients                  clients?                   @relation(fields: [id_client], references: [id_client], onDelete: NoAction, onUpdate: NoAction)
+  subscription_tiers       subscription_tiers?        @relation(fields: [id_subscription_tier], references: [id_subscription_tier], onDelete: NoAction, onUpdate: NoAction)
+  subscription_types       subscription_types?        @relation(fields: [id_subscription_type], references: [id_subscription_type], onDelete: NoAction, onUpdate: NoAction)
+}

@@ -1,0 +1,86 @@
+services:
+  admon-nats-server:
+    image: nats:latest
+    ports:
+      - "8223:8222"
+      - "4223:4222"
+    networks:
+        - my_shared_network
+
+  admon-client-gateway:
+    depends_on:
+      - admon-nats-server
+    build: ./client-gateway
+    ports:
+      - "${CLIENT_GATEWAY_PORT}:9000"
+    volumes:
+      - ./client-gateway/src:/usr/src/app/src
+    command: npm run start:dev
+    environment:
+      - PORT=${CLIENT_GATEWAY_PORT}
+      - NATS_SERVERS=nats://admon-nats-server:4222
+      - AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_S3_REGION=${AWS_S3_REGION}
+      - AWS_S3_BUCKET=${AWS_S3_BUCKET}
+      - AWS_S3_URL_EXPIRES=${AWS_S3_URL_EXPIRES}
+    networks:
+      - my_shared_network
+
+  admon-billing-ms:
+    depends_on:
+      - admon-nats-server
+    build: ./billing
+    volumes:
+      - ./billing/src:/usr/src/app/src
+    command: npm run start:dev
+    environment:
+      - NATS_SERVERS=nats://admon-nats-server:4222
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - TRIPS_MODULE_ID=${TRIPS_MODULE_ID}
+      - ALERTS_MODULE_ID=${ALERTS_MODULE_ID}
+      - UNITS_MODULE_ID=${UNITS_MODULE_ID}
+      - TEMPERATURES_MODULE_ID=${TEMPERATURES_MODULE_ID}
+      - FUELS_MODULE_ID=${FUELS_MODULE_ID}
+      - MAINTENANCES_MODULE_ID=${MAINTENANCES_MODULE_ID}
+      - TAX_RATE_ID=${TAX_RATE_ID}
+      - STRIPE_PORTAL_RETURN_URL=${STRIPE_PORTAL_RETURN_URL}
+    networks:
+      - my_shared_network
+
+  admon-clients-ms:
+    depends_on:
+      - admon-nats-server
+      - admon-clients-postgres-db
+    build: ./clients
+    volumes:
+      - ./clients/src:/usr/src/app/src
+    command: npm run start:dev
+    environment:
+      - NATS_SERVERS=nats://admon-nats-server:4222
+      - DATABASE_URL_POSTGRES=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@admon-clients-postgres-db:5432/clients_db
+      - SECRET_KEY_TOKEN=${SECRET_KEY_TOKEN}
+      - CRYPT_KEY=${CRYPT_KEY}
+      - XYZ_CLIENT_GATEWAY_URL=${XYZ_CLIENT_GATEWAY_URL}
+    networks:
+      - my_shared_network
+    env_file:
+      - .env.clients
+
+  admon-clients-postgres-db:
+    image: postgres:latest
+    restart: always
+    volumes:
+      - ./clients/postgres:/var/lib/postgresql/data
+    ports:
+      - "5437:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: clients_db
+    networks:
+      - my_shared_network
+
+networks:
+  my_shared_network:
+    external: true

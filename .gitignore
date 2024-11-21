@@ -1,0 +1,5 @@
+node_modules/
+./*/prisma/migrations
+dist/
+package-lock.json
+.vscode
